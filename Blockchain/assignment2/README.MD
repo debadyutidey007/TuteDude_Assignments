@@ -158,12 +158,12 @@ The control flow behind this transcript is shown below. The loop prints the menu
 
 ```mermaid
 flowchart TD
-    start(["Start"]) --> entry["main() creates Application<br>and calls run()"]
+    start(["Start"]) --> entry["main() creates Application and calls run()"]
 
     subgraph runloop["Application.run(): while True"]
         show["Print the menu"] --> read["Read the choice"]
         read --> valid{"Valid choice<br/>from 1 to 5?"}
-        valid -->|No| invalid["Print the invalid-choice<br>message"]
+        valid -->|No| invalid["Print the invalid-choice message"]
         invalid --> show
         valid -->|Yes| isexit{"Exit?"}
         isexit -->|No| dispatch["handlers[option]()"]
@@ -320,10 +320,10 @@ The scheme signs a hash of the message, never the raw message. A random salt is 
 flowchart TD
     m["Message m"] --> mh["mHash = SHA-256 of m<br/>32 bytes"]
     salt["salt = 32 random bytes"] --> mp
-    mh --> mp["M' = 8 zero bytes ‖ mHash ‖<br>salt"]
+    mh --> mp["M' = 8 zero bytes ‖ mHash ‖ salt"]
     mp --> h["H = SHA-256 of M'<br/>32 bytes"]
     salt --> db["DB = 190 zero bytes ‖ 0x01 ‖ salt<br/>223 bytes"]
-    h --> mgf["dbMask = MGF1-SHA-256 of <br>H 223 bytes"]
+    h --> mgf["dbMask = MGF1-SHA-256 of H<br/>223 bytes"]
     db --> mk["maskedDB = DB XOR dbMask<br/>leftmost bit cleared"]
     mgf --> mk
     mk --> em["EM = maskedDB ‖ H ‖ 0xBC<br/>256 bytes"]
@@ -338,11 +338,11 @@ Verification undoes the public-key operation, checks the structure of the recove
 ```mermaid
 flowchart TD
     sg["Signature σ"] --> ep["EM' = σ^e mod n<br/>using the public key pk"]
-    ep --> sp["Split EM' into maskedDB, H<br>and the trailer byte"]
+    ep --> sp["Split EM' into maskedDB, H and the trailer byte"]
     sp --> tr{"Trailer = 0xBC and leftmost<br/>bit of maskedDB = 0?"}
     tr -->|No| rej["Reject: InvalidSignature"]
-    tr -->|Yes| un["DB = maskedDB XOR<br>MGF1-SHA-256 of H"]
-    un --> st{"DB = 190 zero bytes ‖ 0x01<br>‖ salt?"}
+    tr -->|Yes| un["DB = maskedDB XOR MGF1-SHA-256 of H"]
+    un --> st{"DB = 190 zero bytes ‖ 0x01 ‖ salt?"}
     st -->|No| rej
     st -->|Yes| mh["mHash = SHA-256 of m"]
     m["Message m"] --> mh
@@ -365,7 +365,7 @@ flowchart TD
 
 Write $\mathsf{Enc}(m, s)$ for EMSA-PSS-ENCODE and $\mathsf{Chk}(m, EM')$ for EMSA-PSS-VERIFY (RFC 8017, section 9.1); the conversions I2OSP and OS2IP between octet strings and integers are left implicit. The scheme is the triple $(\mathrm{KeyGen}, \mathrm{Sign}, \mathrm{Vf})$ with
 
-$$\mathrm{KeyGen}(1^{2048}):\quad p \neq q \text{ primes},\ \ n = pq,\ \ e = 65537,\ \ d \equiv e^{-1} \pmod{\lambda(n)},\ \ \lambda(n) = \operatorname{lcm}(p-1,\, q-1),$$
+$$\mathrm{KeyGen}(1^{2048}):\quad p \neq q \text{ primes},\ \ n = pq,\ \ e = 65537,\ \ d \equiv e^{-1} \pmod{\lambda(n)},\ \ \lambda(n) = \mathrm{lcm}(p-1,\, q-1),$$
 
 $$pk = (n, e), \qquad sk = (n, d), \qquad 2^{2047} \le n < 2^{2048},$$
 
@@ -447,19 +447,54 @@ Only case and whitespace are normalised; other punctuation such as the hyphens i
 
 Let $\kappa$ be the canonicalisation map, $V$ the set of vehicle records and $R : \Sigma^{*} \rightharpoonup V$ the registry, a partial function that is nowhere defined at the start. The two operations are
 
-$$\mathrm{register}(p, o, m) = \begin{cases} R \leftarrow R \cup \{\kappa(p) \mapsto (\kappa(p), o, m)\} & \kappa(p) \notin \operatorname{dom}(R), \\ \text{raise } \mathrm{DuplicateVehicleError} & \kappa(p) \in \operatorname{dom}(R), \end{cases}$$
+$$\mathrm{register}(p, o, m) = \begin{cases} R \leftarrow R \cup \{\kappa(p) \mapsto (\kappa(p), o, m)\} & \kappa(p) \notin \mathrm{dom}(R), \\ \text{raise } \mathrm{DuplicateVehicleError} & \kappa(p) \in \mathrm{dom}(R), \end{cases}$$
 
-$$\mathrm{get}(p) = \begin{cases} R(\kappa(p)) & \kappa(p) \in \operatorname{dom}(R), \\ \text{raise } \mathrm{VehicleNotFoundError} & \text{otherwise.} \end{cases}$$
+$$\mathrm{get}(p) = \begin{cases} R(\kappa(p)) & \kappa(p) \in \mathrm{dom}(R), \\ \text{raise } \mathrm{VehicleNotFoundError} & \text{otherwise.} \end{cases}$$
 
-Three invariants hold. First, $\kappa$ is idempotent, $\kappa(\kappa(p)) = \kappa(p)$, so a canonical key that is canonicalised again, as happens between the early duplicate check and the final insertion, does not change. Second, every stored record satisfies $R(k).\mathrm{number\_plate} = k$. Third, no operation deletes or overwrites an entry, so $\operatorname{dom}(R)$ only grows and a number plate can never belong to two vehicles. The per-plate life cycle is therefore the following machine.
+Three invariants hold. First, $\kappa$ is idempotent, $\kappa(\kappa(p)) = \kappa(p)$, so a canonical key that is canonicalised again, as happens between the early duplicate check and the final insertion, does not change. Second, every stored record satisfies $R(k).\mathrm{number\_plate} = k$. Third, no operation deletes or overwrites an entry, so $\mathrm{dom}(R)$ only grows and a number plate can never belong to two vehicles. The per-plate life cycle is therefore the following machine.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Unregistered
-    Unregistered --> Registered : register(plate, owner,<br>model)
-    Registered --> Registered : register(same plate) raises DuplicateVehicleError
-    Unregistered --> Unregistered : get(plate) raises<br>VehicleNotFoundError
-    Registered --> Registered : get(plate)<br>returns the Vehicle
+    direction TB
+
+    [*] --> Unregistered : System initialized
+
+    state "Unregistered / Vehicle Not Found" as Unregistered
+    state "Registered / Vehicle Exists" as Registered
+    state "Validation Failed" as ValidationFailed
+    state "Duplicate Vehicle" as DuplicateVehicle
+    state "Vehicle Retrieved" as VehicleRetrieved
+
+    %% Registration Flow
+    Unregistered --> ValidationFailed : register<br>(plate, owner, model)<br>invalid data
+    ValidationFailed --> Unregistered : validation error returned
+
+    Unregistered --> Registered : register<br>(plate, owner, model)<br>valid & unique plate
+
+    %% Duplicate Registration
+    Registered --> DuplicateVehicle : register<br>(same plate, owner, model)
+    DuplicateVehicle --> Registered : DuplicateVehicleError
+
+    %% Vehicle Lookup
+    Unregistered --> Unregistered : get(plate)<br>VehicleNotFoundError
+
+    Registered --> VehicleRetrieved : get(plate)
+    VehicleRetrieved --> Registered : Vehicle returned
+
+    %% Additional Operations
+    Registered --> Registered : update<br>(plate, owner, model)
+    Registered --> Registered : delete(plate)
+    Registered --> Unregistered : delete(plate)<br>successful
+
+    %% Invalid / Missing Input
+    Unregistered --> Unregistered : get(invalid plate)<br>VehicleNotFoundError
+
+    Registered --> ValidationFailed : update<br>(plate, invalid data)
+    ValidationFailed --> Registered : validation error returned
+
+    %% Terminal state
+    Unregistered --> [*] : shutdown
+    Registered --> [*] : shutdown
 ```
 
 ### Registration flow
@@ -468,14 +503,14 @@ The number plate is requested first and checked immediately, so the user is neve
 
 ```mermaid
 flowchart TD
-    a(["Menu entry 3: Register a<br>vehicle"]) --> b["Prompt: Enter Number<br>Plate<br/>re-prompt while blank"]
-    b --> c["key = canonical(plate)<br/>remove whitespace,<br>upper-case"]
+    a(["Menu entry 3: Register a vehicle"]) --> b["Prompt: Enter Number Plate<br/>re-prompt while blank"]
+    b --> c["key = canonical(plate)<br/>remove whitespace, upper-case"]
     c --> d{"key already<br/>in the registry?"}
-    d -->|Yes| e["Print: Error: Number plate<br>'KEY'<br/>is already registered."]
+    d -->|Yes| e["Print: Error: Number plate 'KEY'<br/>is already registered."]
     d -->|No| f["Prompt: Enter Owner Name<br/>re-prompt while blank"]
     f --> g["Prompt: Enter Vehicle Model<br/>re-prompt while blank"]
-    g --> h["register() creates an immutable Vehicle<br/>and stores registry[key] =<br>vehicle"]
-    h --> i["Print: Vehicle KEY<br>registered successfully."]
+    g --> h["register() creates an immutable Vehicle<br/>and stores registry[key] = vehicle"]
+    h --> i["Print: Vehicle KEY registered successfully."]
     e --> z(["Return to the menu"])
     i --> z
 
@@ -489,7 +524,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    a(["Menu entry 4: Retrieve vehicle details"]) --> b["Prompt: Enter Number <br>Plate<br/>re-prompt while blank"]
+    a(["Menu entry 4: Retrieve vehicle details"]) --> b["Prompt: Enter Number Plate<br/>re-prompt while blank"]
     b --> c["key = canonical(plate)"]
     c --> d{"key in the registry?"}
     d -->|Yes| e["Print Number Plate, Owner and Model"]
@@ -529,9 +564,9 @@ Free-text vehicle fields are stripped of surrounding whitespace and must contain
 
 ```mermaid
 flowchart TD
-    a(["read_required(prompt)"]) --> b["value =<br>input(prompt + ': ').strip()"]
+    a(["read_required(prompt)"]) --> b["value = input(prompt + ': ').strip()"]
     b --> c{"value is empty?"}
-    c -->|Yes| d["Print: This field cannot be<br>empty.<br/>Please try again."]
+    c -->|Yes| d["Print: This field cannot be empty.<br/>Please try again."]
     d --> b
     c -->|No| e(["return value"])
 ```
@@ -671,7 +706,7 @@ flowchart LR
 
     subgraph third["Third party: pip install cryptography"]
         exc["cryptography.exceptions"]
-        hz["cryptography.hazmat.<br>primitives hashes,<br>asymmetric.padding,<br/>asymmetric.rsa"]
+        hz["cryptography.hazmat.primitives<br/>hashes, asymmetric.padding,<br/>asymmetric.rsa"]
     end
 
     app --> hashlib & dataclasses & enum & typing & abc
